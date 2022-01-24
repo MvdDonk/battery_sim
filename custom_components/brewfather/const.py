@@ -1,5 +1,5 @@
 """Constants for the utility meter component."""
-DOMAIN = "battery_sim"
+DOMAIN = "brewfather"
 
 QUARTER_HOURLY = "quarter-hourly"
 HOURLY = "hourly"
