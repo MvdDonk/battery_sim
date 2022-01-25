@@ -38,4 +38,4 @@ class BrewfatherSensor(SensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         _LOGGER.info("Migrating maarten test brewfatherssss .")
-        self._attr_native_value = 21
+        self._attr_native_value = 2321
