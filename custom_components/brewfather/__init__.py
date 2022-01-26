@@ -4,11 +4,18 @@ from __future__ import annotations
 # https://github.com/robinostlund/homeassistant-volkswagencarnet/blob/master/custom_components/volkswagencarnet/__init__.py
 import logging
 from datetime import timedelta
-from typing import Union
+from typing import TypedDict
+
+from dataclasses import dataclass
+from typing import Any, List, TypeVar, Type, cast, Callable
 
 import aiohttp
 from black import json
 
+
+# from models.batches_item import BatchesItemElement
+from .models.batches_item import BatchesItemElement, batches_item_from_dict
+from .models.batch_item import BatchItem, batch_item_from_dict
 
 # ontwikkelogmvign: https://developers.home-assistant.io/docs/development_environment/
 
@@ -23,6 +30,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 # from .client import CandyClient, WashingMachineStatus
 
 from .const import *
+from .testdata import TESTDATA_BATCH
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["sensor"]
@@ -30,7 +38,6 @@ REQUEST_TIMEOUT = 10
 UPDATE_INTERVAL = 120
 BATCHES_URI = "https://api.brewfather.app/v1/batches/"
 BATCH_URI = "https://api.brewfather.app/v1/batches/{}"
-BKK_URI = "https://api.brewfather.app/v1/batches/MdygaYwzcjEGmDTwQXJ4Wfhjbm0O8s/"
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
@@ -111,10 +118,20 @@ class BrewfatherCoordinator(DataUpdateCoordinator):
     async def update(self) -> bool:  # Union[bool, Vehicle]:
         """Update status from Volkswagen WeConnect"""
         _LOGGER.debug("BrewfatherCoordinator.update! %s", self.password)
+        dry_run = True
+
+        activeBatches = await self.get_active_batches(dry_run)
+
+        batch = await self.get_batch(activeBatches[0].id, dry_run)
+
+        return True
+
+    async def get_active_batches(self, dry_run: bool) -> List[BatchesItemElement]:
+        """Update status from Volkswagen WeConnect"""
+        _LOGGER.debug("get_active_batches!")
 
         # 'Hello, {}'.format(name)
-        dryRun = True
-        if dryRun:
+        if dry_run:
             testJson = """[
                 {'_id': 'MdygaYwzcjEGmDTwQXJ4Wfhjbm0O8s', 'name': 'Batch', 'batchNo': 30, 'status': 'Fermenting', 'brewer': '', 'brewDate': 1642806000000, 'recipe': {'name': 'Ryerish Red Ale'} },
                 {'_id': 'aIJH9A6NeUApZcrN93oXoZm4HcanrB', 'name': 'Batch', 'batchNo': 29, 'status': 'Completed', 'brewer': '', 'brewDate': 1638486000000, 'recipe': {'name': 'Even Sharks Need Water - Donky'} },
@@ -127,7 +144,7 @@ class BrewfatherCoordinator(DataUpdateCoordinator):
                 {'_id': '5pcAXwZDsmxh25XSSffZ81UFpraJgP', 'name': 'Batch', 'batchNo': 22, 'status': 'Archived', 'brewer': '', 'brewDate': 1605250827018, 'recipe': {'name': 'Gingerbread christmas'} },
                 {'_id': 'dh7ulzII0WICzBlFuYtpYGu2so57De', 'name': 'Batch', 'batchNo': 21, 'status': 'Archived', 'brewer': '', 'brewDate': 1603443822289, 'recipe': {'name': 'Restjes stout'} }]"""
             testJson = testJson.replace("'", '"')
-            allBatches = json.loads(testJson)
+            allBatches = batches_item_from_dict(json.loads(testJson))
         else:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
@@ -135,7 +152,9 @@ class BrewfatherCoordinator(DataUpdateCoordinator):
                 ) as response:
 
                     if response.status == 200:
-                        allBatches = await response.json()
+                        allBatches = batches_item_from_dict(
+                            json.loads(await response.json())
+                        )
                     else:
                         raise UpdateFailed(
                             f"Error communicating with API: {response.status}"
@@ -143,19 +162,142 @@ class BrewfatherCoordinator(DataUpdateCoordinator):
 
         activeBatches = []
         for batch in allBatches:
-            if batch["status"] == "Fermenting":
+            if batch.status == "Fermenting":
                 activeBatches.append(batch)
 
-        _LOGGER.debug("Active batches %s", activeBatches)
-        return True
-        # # update vehicles
-        # if not await self.connection.update():
-        #     _LOGGER.warning("Could not query update from volkswagen WeConnect")
-        #     return False
+        return activeBatches
 
-        # _LOGGER.debug("Updating data from volkswagen WeConnect")
-        # for vehicle in self.connection.vehicles:
-        #     if vehicle.vin.upper() == self.vin:
-        #         return vehicle
+    async def get_batch(self, batch_id: str, dry_run: bool) -> BatchItem:
+        """Update status from Volkswagen WeConnect"""
+        _LOGGER.debug("get_batch! %s", batch_id)
 
-        # return False
+        if dry_run:
+            batch = batch_item_from_dict(json.loads(TESTDATA_BATCH))
+        else:
+            async with aiohttp.ClientSession() as session:
+                url = BATCH_URI.format(batch_id)
+                async with session.get(
+                    url, auth=aiohttp.BasicAuth(self.username, self.password)
+                ) as response:
+
+                    if response.status == 200:
+                        batch = batch_item_from_dict(json.loads(await response.json()))
+                    else:
+                        raise UpdateFailed(
+                            f"Error communicating with API: {response.status}"
+                        )
+
+        return batch
+
+
+# class BatchesItem:
+#      def __init__(self, label, x, y, width, height):
+#         self.label = label
+#         self.x = x
+#         self.y = y
+#         self.width = width
+#         self.height = height
+
+#     @staticmethod
+#     def from_json(json_dct):
+#       return Label(json_dct['label'],
+#                    json_dct['x'], json_dct['y'],
+#                    json_dct['width'], json_dct['height'])
+
+
+# To use this code, make sure you
+#
+#     import json
+#
+# and then, to convert JSON from a string, do
+#
+#     result = batches_item_from_dict(json.loads(json_string))
+
+# from dataclasses import dataclass
+# from typing import Any, List, TypeVar, Type, cast, Callable
+
+
+T = TypeVar("T")
+
+
+# def from_str(x: Any) -> str:
+#     assert isinstance(x, str)
+#     return x
+
+
+# def from_int(x: Any) -> int:
+#     assert isinstance(x, int) and not isinstance(x, bool)
+#     return x
+
+
+# def from_none(x: Any) -> Any:
+#     assert x is None
+#     return x
+
+
+# def to_class(c: Type[T], x: Any) -> dict:
+#     assert isinstance(x, c)
+#     return cast(Any, x).to_dict()
+
+
+def from_list(f: Callable[[Any], T], x: Any) -> List[T]:
+    assert isinstance(x, list)
+    return [f(y) for y in x]
+
+
+# @dataclass
+# class Recipe:
+#     name: str
+
+#     @staticmethod
+#     def from_dict(obj: Any) -> "Recipe":
+#         assert isinstance(obj, dict)
+#         name = from_str(obj.get("name"))
+#         return Recipe(name)
+
+#     def to_dict(self) -> dict:
+#         result: dict = {}
+#         result["name"] = from_str(self.name)
+#         return result
+
+
+# @dataclass
+# class BatchesItemElement:
+#     id: str
+#     name: str
+#     batch_no: int
+#     status: str
+#     brewer: None
+#     brew_date: int
+#     recipe: Recipe
+
+#     @staticmethod
+#     def from_dict(obj: Any) -> "BatchesItemElement":
+#         assert isinstance(obj, dict)
+#         id = from_str(obj.get("_id"))
+#         name = from_str(obj.get("name"))
+#         batch_no = from_int(obj.get("batchNo"))
+#         status = from_str(obj.get("status"))
+#         brewer = from_str(obj.get("brewer"))
+#         brew_date = from_int(obj.get("brewDate"))
+#         recipe = Recipe.from_dict(obj.get("recipe"))
+#         return BatchesItemElement(id, name, batch_no, status, brewer, brew_date, recipe)
+
+#     def to_dict(self) -> dict:
+#         result: dict = {}
+#         result["_id"] = from_str(self.id)
+#         result["name"] = from_str(self.name)
+#         result["batchNo"] = from_int(self.batch_no)
+#         result["status"] = from_str(self.status)
+#         result["brewer"] = from_str(self.brewer)
+#         result["brewDate"] = from_int(self.brew_date)
+#         result["recipe"] = to_class(Recipe, self.recipe)
+#         return result
+
+
+# def batches_item_from_dict(s: Any) -> List[BatchesItemElement]:
+#     return from_list(BatchesItemElement.from_dict, s)
+
+
+# def batches_item_to_dict(x: List[BatchesItemElement]) -> Any:
+#     return from_list(lambda x: to_class(BatchesItemElement, x), x)
