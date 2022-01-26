@@ -1,3 +1,4 @@
 /*
 !.gitignore
 !/custom_components
+custom_components/brewfather/__pycache__/
