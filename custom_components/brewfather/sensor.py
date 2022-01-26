@@ -6,7 +6,6 @@ import sys
 import aiohttp
 import async_timeout
 from datetime import timedelta
-from config.custom_components.brewfather import BrewfatherCoordinator
 from .models.batch_item import BatchItem
 from homeassistant.config_entries import ConfigEntry
 from .const import *
@@ -83,7 +82,7 @@ class BrewfatherSensor(CoordinatorEntity):
 
     def __init__(
         self,
-        coordinator: BrewfatherCoordinator,
+        coordinator: DataUpdateCoordinator,
         name: str,
         sensorKind: SensorKinds,
         icon: str,
@@ -148,7 +147,8 @@ class BrewfatherSensor(CoordinatorEntity):
     @property
     def state(self) -> StateType:
         """Return the state."""
-        brewfatherCoordinator: BrewfatherCoordinator = self.coordinator
+        # brewfatherCoordinator: BrewfatherCoordinator = self.coordinator
+        brewfatherCoordinator = self.coordinator
 
         if self._kind == SensorKinds.fermenting_name:
             self._state = brewfatherCoordinator.data.fermenting_name
