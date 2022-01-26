@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Any, List, TypeVar, Type, cast, Callable
 
 import aiohttp
-from black import json
+import json
 
 
 # from models.batches_item import BatchesItemElement
@@ -171,7 +171,7 @@ class BrewfatherCoordinator(DataUpdateCoordinator[BrewfatherCoordinatorData]):
     async def update(self) -> List[BatchItem]:
         """Update status from Volkswagen WeConnect"""
         _LOGGER.debug("BrewfatherCoordinator.update!")
-        dry_run = True
+        # dry_run = True
 
         activeBatches = await self.get_active_batches(dry_run)
 
