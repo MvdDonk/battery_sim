@@ -1,10 +1,11 @@
 """The Candy integration."""
 from __future__ import annotations
+import datetime
 
 # https://github.com/robinostlund/homeassistant-volkswagencarnet/blob/master/custom_components/volkswagencarnet/__init__.py
 import logging
-from datetime import timedelta
-from typing import TypedDict
+from datetime import datetime, timezone, timedelta
+from typing import TypedDict, Optional
 
 from dataclasses import dataclass
 from typing import Any, List, TypeVar, Type, cast, Callable
@@ -15,7 +16,7 @@ from black import json
 
 # from models.batches_item import BatchesItemElement
 from .models.batches_item import BatchesItemElement, batches_item_from_dict
-from .models.batch_item import BatchItem, batch_item_from_dict
+from .models.batch_item import BatchItem, batch_item_from_dict, FermentationStep
 
 # ontwikkelogmvign: https://developers.home-assistant.io/docs/development_environment/
 
@@ -36,6 +37,7 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["sensor"]
 REQUEST_TIMEOUT = 10
 UPDATE_INTERVAL = 120
+MS_IN_DAY = 86400000
 BATCHES_URI = "https://api.brewfather.app/v1/batches/"
 BATCH_URI = "https://api.brewfather.app/v1/batches/{}"
 
@@ -43,10 +45,7 @@ BATCH_URI = "https://api.brewfather.app/v1/batches/{}"
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Setup our skeleton component."""
     # States are in the format DOMAIN.OBJECT_ID.
-    _LOGGER.debug("username %s", config_entry.data[CONF_USERNAME])
-    _LOGGER.debug("password %s", config_entry.data[CONF_PASSWORD])
-    _LOGGER.debug("config_entry.entry_id %s", config_entry.entry_id)
-    hass.states.async_set("brewfather.Hello_World", "Works!2")
+    # hass.states.async_set("brewfather.Hello_World", "Works!2")
 
     update_interval = timedelta(seconds=UPDATE_INTERVAL)
     coordinator = BrewfatherCoordinator(hass, config_entry, update_interval)
@@ -57,7 +56,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         raise ConfigEntryNotReady
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][config_entry.entry_id] = {COORDINATOR: coordinator}
-    _LOGGER.debug("Done %s", hass.data[DOMAIN])
 
     for component in PLATFORMS:
         _LOGGER.info("Setting up platform: %s", component)
@@ -74,7 +72,24 @@ def update_callback(hass, coordinator):
     hass.async_create_task(coordinator.async_request_refresh())
 
 
-class BrewfatherCoordinator(DataUpdateCoordinator):
+def sort_by_actual_time(entity: FermentationStep):
+    return entity.actual_time
+
+
+class BrewfatherCoordinatorData:
+    fermenting_name: str
+    fermenting_current_temperature: Optional[float]
+    fermenting_next_date: Optional[datetime.datetime]
+    fermenting_next_temperature: Optional[float]
+
+    def __init__(self):
+        # set defaults to None
+        self.fermenting_current_temperature = None
+        self.fermenting_next_date = None
+        self.fermenting_next_temperature = None
+
+
+class BrewfatherCoordinator(DataUpdateCoordinator[BrewfatherCoordinatorData]):
     """Class to manage fetching data from the API."""
 
     def __init__(self, hass: HomeAssistant, entry, update_interval: timedelta):
@@ -84,47 +99,88 @@ class BrewfatherCoordinator(DataUpdateCoordinator):
 
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval)
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> BrewfatherCoordinatorData:
         """Update data via library."""
-        _LOGGER.debug("BrewfatherCoordinator._async_update_data! %s", self.username)
+        _LOGGER.debug("BrewfatherCoordinator._async_update_data!")
         # https://github.com/djtimca/HASpaceX/blob/master/custom_components/spacex/__init__.py
-        vehicle = await self.update()
-        return {"status": "ok"}
+        batches = await self.update()
 
-    # if not vehicle:
-    #     raise UpdateFailed(
-    #         "Failed to update WeConnect. Need to accept EULA? Try logging in to the portal: https://www.portal.volkswagen-we.com/"
-    #     )
+        data = BrewfatherCoordinatorData()
 
-    # if self.entry.options.get(CONF_REPORT_REQUEST, False):
-    #     await self.report_request(vehicle)
+        currentBatch = batches[0]
+        data.fermenting_name = currentBatch.recipe.name
 
-    # # Backward compatibility
-    # default_convert_conf = get_convert_conf(self.entry)
+        currentTimeInMs = datetime.utcnow().timestamp() * 1000
 
-    # convert_conf = self.entry.options.get(
-    #     CONF_CONVERT, self.entry.data.get(CONF_CONVERT, default_convert_conf)
-    # )
+        # cur: 18   1642806000000,  next: 20    1643151600000
+        # currentTimeInMs = 1642944926000
 
-    # dashboard = vehicle.dashboard(
-    #     mutable=self.entry.data.get(CONF_MUTABLE),
-    #     spin=self.entry.data.get(CONF_SPIN),
-    #     miles=convert_conf == CONF_IMPERIAL_UNITS,
-    #     scandinavian_miles=convert_conf == CONF_SCANDINAVIAN_MILES,
-    # )
+        # cur: 20   1643151600000,  next: 22    1643324400000
+        # currentTimeInMs = 1643244926000
 
-    # return dashboard.instruments
+        # cur: 2    1643497200000,  next: NONE
+        # currentTimeInMs = 1643546716000
 
-    async def update(self) -> bool:  # Union[bool, Vehicle]:
+        # cur: NONE              ,  next: NONE
+        # currentTimeInMs = 1643899443000
+
+        # sort steps from first to latest
+        currentBatch.recipe.fermentation.steps.sort(key=sort_by_actual_time)
+
+        currentStep: FermentationStep | None = None
+        nextStep: FermentationStep | None = None
+
+        # _LOGGER.debug("current time %s", currentTimeInMs)
+
+        for index, obj in enumerate(currentBatch.recipe.fermentation.steps):
+            # _LOGGER.debug("----")
+            # _LOGGER.debug("actual_time %s", obj.actual_time)
+            # _LOGGER.debug("end time %s", obj.actual_time + obj.step_time * MS_IN_DAY)
+            # _LOGGER.debug("step_temp %s", obj.step_time)
+            next_ = None
+            # check if start date is in past, also check if end date (start date + step_time * MS_IN_DAY) is in future
+            if (
+                obj.actual_time < currentTimeInMs
+                and obj.actual_time + obj.step_time * MS_IN_DAY > currentTimeInMs
+            ):
+                # _LOGGER.debug("set current %s", obj.display_step_temp)
+                currentStep = obj
+            # check if start date is in future
+            elif obj.actual_time > currentTimeInMs:
+                # _LOGGER.debug("set next %s", obj.display_step_temp)
+                nextStep = obj
+                break
+
+        if currentStep is not None:
+            data.fermenting_current_temperature = currentStep.display_step_temp
+            _LOGGER.debug("Current step: %s", currentStep.display_step_temp)
+        else:
+            _LOGGER.debug("No current step")
+
+        if nextStep is not None:
+            data.fermenting_next_temperature = nextStep.display_step_temp
+            data.fermenting_next_date = datetime.fromtimestamp(
+                nextStep.actual_time / 1000, timezone.utc
+            )
+            _LOGGER.debug("Next step: %s", nextStep.display_step_temp)
+        else:
+            _LOGGER.debug("No next step")
+
+        return data
+
+    async def update(self) -> List[BatchItem]:
         """Update status from Volkswagen WeConnect"""
-        _LOGGER.debug("BrewfatherCoordinator.update! %s", self.password)
+        _LOGGER.debug("BrewfatherCoordinator.update!")
         dry_run = True
 
         activeBatches = await self.get_active_batches(dry_run)
 
-        batch = await self.get_batch(activeBatches[0].id, dry_run)
+        activeBatchesData = []
+        for batch in activeBatches:
+            batch = await self.get_batch(batch.id, dry_run)
+            activeBatchesData.append(batch)
 
-        return True
+        return activeBatchesData
 
     async def get_active_batches(self, dry_run: bool) -> List[BatchesItemElement]:
         """Update status from Volkswagen WeConnect"""
@@ -188,116 +244,3 @@ class BrewfatherCoordinator(DataUpdateCoordinator):
                         )
 
         return batch
-
-
-# class BatchesItem:
-#      def __init__(self, label, x, y, width, height):
-#         self.label = label
-#         self.x = x
-#         self.y = y
-#         self.width = width
-#         self.height = height
-
-#     @staticmethod
-#     def from_json(json_dct):
-#       return Label(json_dct['label'],
-#                    json_dct['x'], json_dct['y'],
-#                    json_dct['width'], json_dct['height'])
-
-
-# To use this code, make sure you
-#
-#     import json
-#
-# and then, to convert JSON from a string, do
-#
-#     result = batches_item_from_dict(json.loads(json_string))
-
-# from dataclasses import dataclass
-# from typing import Any, List, TypeVar, Type, cast, Callable
-
-
-T = TypeVar("T")
-
-
-# def from_str(x: Any) -> str:
-#     assert isinstance(x, str)
-#     return x
-
-
-# def from_int(x: Any) -> int:
-#     assert isinstance(x, int) and not isinstance(x, bool)
-#     return x
-
-
-# def from_none(x: Any) -> Any:
-#     assert x is None
-#     return x
-
-
-# def to_class(c: Type[T], x: Any) -> dict:
-#     assert isinstance(x, c)
-#     return cast(Any, x).to_dict()
-
-
-def from_list(f: Callable[[Any], T], x: Any) -> List[T]:
-    assert isinstance(x, list)
-    return [f(y) for y in x]
-
-
-# @dataclass
-# class Recipe:
-#     name: str
-
-#     @staticmethod
-#     def from_dict(obj: Any) -> "Recipe":
-#         assert isinstance(obj, dict)
-#         name = from_str(obj.get("name"))
-#         return Recipe(name)
-
-#     def to_dict(self) -> dict:
-#         result: dict = {}
-#         result["name"] = from_str(self.name)
-#         return result
-
-
-# @dataclass
-# class BatchesItemElement:
-#     id: str
-#     name: str
-#     batch_no: int
-#     status: str
-#     brewer: None
-#     brew_date: int
-#     recipe: Recipe
-
-#     @staticmethod
-#     def from_dict(obj: Any) -> "BatchesItemElement":
-#         assert isinstance(obj, dict)
-#         id = from_str(obj.get("_id"))
-#         name = from_str(obj.get("name"))
-#         batch_no = from_int(obj.get("batchNo"))
-#         status = from_str(obj.get("status"))
-#         brewer = from_str(obj.get("brewer"))
-#         brew_date = from_int(obj.get("brewDate"))
-#         recipe = Recipe.from_dict(obj.get("recipe"))
-#         return BatchesItemElement(id, name, batch_no, status, brewer, brew_date, recipe)
-
-#     def to_dict(self) -> dict:
-#         result: dict = {}
-#         result["_id"] = from_str(self.id)
-#         result["name"] = from_str(self.name)
-#         result["batchNo"] = from_int(self.batch_no)
-#         result["status"] = from_str(self.status)
-#         result["brewer"] = from_str(self.brewer)
-#         result["brewDate"] = from_int(self.brew_date)
-#         result["recipe"] = to_class(Recipe, self.recipe)
-#         return result
-
-
-# def batches_item_from_dict(s: Any) -> List[BatchesItemElement]:
-#     return from_list(BatchesItemElement.from_dict, s)
-
-
-# def batches_item_to_dict(x: List[BatchesItemElement]) -> Any:
-#     return from_list(lambda x: to_class(BatchesItemElement, x), x)

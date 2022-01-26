@@ -1288,10 +1288,10 @@ class FermentationStep:
     pressure: None
     display_pressure: None
     step_time: Optional[int] = None
-    display_step_temp: Optional[int] = None
+    display_step_temp: Optional[float] = None
     type: Optional[str] = None
     actual_time: Optional[int] = None
-    step_temp: Optional[int] = None
+    step_temp: Optional[float] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'FermentationStep':
@@ -1299,10 +1299,10 @@ class FermentationStep:
         pressure = from_none(obj.get("pressure"))
         display_pressure = from_none(obj.get("displayPressure"))
         step_time = from_union([from_int, from_none], obj.get("stepTime"))
-        display_step_temp = from_union([from_int, from_none], obj.get("displayStepTemp"))
+        display_step_temp = from_union([from_float, from_none], obj.get("displayStepTemp"))
         type = from_union([from_str, from_none], obj.get("type"))
         actual_time = from_union([from_int, from_none], obj.get("actualTime"))
-        step_temp = from_union([from_int, from_none], obj.get("stepTemp"))
+        step_temp = from_union([from_float, from_none], obj.get("stepTemp"))
         return FermentationStep(pressure, display_pressure, step_time, display_step_temp, type, actual_time, step_temp)
 
     def to_dict(self) -> dict:
@@ -1310,10 +1310,10 @@ class FermentationStep:
         result["pressure"] = from_none(self.pressure)
         result["displayPressure"] = from_none(self.display_pressure)
         result["stepTime"] = from_union([from_int, from_none], self.step_time)
-        result["displayStepTemp"] = from_union([from_int, from_none], self.display_step_temp)
+        result["displayStepTemp"] = from_union([from_float, from_none], self.display_step_temp)
         result["type"] = from_union([from_str, from_none], self.type)
         result["actualTime"] = from_union([from_int, from_none], self.actual_time)
-        result["stepTemp"] = from_union([from_int, from_none], self.step_temp)
+        result["stepTemp"] = from_union([from_float, from_none], self.step_temp)
         return result
 
 
