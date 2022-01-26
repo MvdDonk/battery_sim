@@ -36,7 +36,7 @@ from .testdata import TESTDATA_BATCH
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["sensor"]
 REQUEST_TIMEOUT = 10
-UPDATE_INTERVAL = 120
+UPDATE_INTERVAL = 3600
 MS_IN_DAY = 86400000
 BATCHES_URI = "https://api.brewfather.app/v1/batches/"
 BATCH_URI = "https://api.brewfather.app/v1/batches/{}"

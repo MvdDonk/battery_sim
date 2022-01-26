@@ -41,45 +41,45 @@ async def async_setup_entry(
     sensors = []
 
     sensors.append(
-        SpaceXSensor(
+        BrewfatherSensor(
             coordinator,
             "Brew name",
             SensorKinds.fermenting_name,
-            "mdi:account-star",
+            "mdi:glass-mug",
         )
     )
 
     sensors.append(
-        SpaceXSensor(
+        BrewfatherSensor(
             coordinator,
             "Current fermenting temperature",
             SensorKinds.fermenting_current_temperature,
-            "mdi:account-star",
+            "mdi:thermometer",
         )
     )
 
     sensors.append(
-        SpaceXSensor(
+        BrewfatherSensor(
             coordinator,
             "Upcoming fermenting temperature",
             SensorKinds.fermenting_next_temperature,
-            "mdi:account-star",
+            "mdi:thermometer-chevron-up",
         )
     )
 
     sensors.append(
-        SpaceXSensor(
+        BrewfatherSensor(
             coordinator,
             "Upcoming fermenting temperature change",
             SensorKinds.fermenting_next_date,
-            "mdi:account-star",
+            "mdi:clock",
         )
     )
     async_add_entities(sensors)
 
 
-class SpaceXSensor(CoordinatorEntity):
-    """Defines a SpaceX Binary sensor."""
+class BrewfatherSensor(CoordinatorEntity):
+    """Defines a sensor."""
 
     def __init__(
         self,
@@ -93,7 +93,7 @@ class SpaceXSensor(CoordinatorEntity):
         super().__init__(coordinator=coordinator)
 
         self._name = name
-        self._unique_id = f"spacex_{sensorKind}"
+        self._unique_id = f"{DOMAIN}_{sensorKind}"
         self._state = None
         self._icon = icon
         self._kind = sensorKind
@@ -162,7 +162,7 @@ class SpaceXSensor(CoordinatorEntity):
         return self._state
 
     async def async_update(self):
-        """Update SpaceX Binary Sensor Entity."""
+        """Update Sensor Entity."""
         await self.coordinator.async_request_refresh()
         _LOGGER.debug("Updating state of the sensors.")
 
