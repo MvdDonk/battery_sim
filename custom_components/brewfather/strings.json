@@ -1,0 +1,27 @@
+{
+    "title": "vxcvxcvxc",
+    "config": {
+      "step": {
+        "user": {
+          "title": "doewfwe ",
+          "description": "bla",
+          "data": {
+            "username": "username",
+            "password": "[%key:common::config_flow::data::password%]"
+          }
+        }
+      },
+      "error": {
+        "register_failed": "Failed to register, please try again",
+        "linking": "Unknown linking error occurred."
+      },
+      "abort": {
+        "discover_timeout": "Unable to discover Hue bridges",
+        "no_bridges": "No Philips Hue bridges discovered",
+        "all_configured": "All Philips Hue bridges are already configured",
+        "unknown": "Unknown error occurred",
+        "cannot_connect": "Unable to connect to the bridge",
+        "already_configured": "Bridge is already configured"
+      }
+    }
+  }

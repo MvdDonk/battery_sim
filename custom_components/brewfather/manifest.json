@@ -1,11 +1,11 @@
 {
-  "domain": "brewfather_test",
-  "name": "Brewfather test",
-  "documentation": "https://github.com/hif2k1/battery_sim/",
-  "version": "1.0",
-  "requirements": [],
-  "codeowners": ["@hif2k1"],
-  "quality_scale": "internal",
-  "iot_class": "local_push",
-  "issue_tracker": "https://github.com/hif2k1/battery_sim/issues"
-}
+    "domain": "brewfather",
+    "name": "Brewfather test naampje",
+    "documentation": "https://github.com/home-assistant/example-custom-config/tree/master/custom_components/hello_world/",
+    "dependencies": [],
+    "codeowners": [],
+    "requirements": [],
+    "iot_class": "cloud_polling",
+    "version": "0.1.0",
+    "config_flow": true
+  }
