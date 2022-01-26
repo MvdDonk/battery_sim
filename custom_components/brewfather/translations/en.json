@@ -1,13 +1,13 @@
 {
-  "title": "vxcvxcvxc",
+  "title": "Brewfather",
   "config": {
     "step": {
       "user": {
-        "title": "doewfwe ",
-        "description": "bla",
+        "title": "Api credentials",
+        "description": "Enter stuff2",
         "data": {
           "username": "username",
-          "password": "[%key:common::config_flow::data::password%]"
+          "password": "apikey"
         }
       }
     },

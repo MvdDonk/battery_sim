@@ -41,46 +41,6 @@ DATA_SCHEMA = vol.Schema(
 )
 
 
-# async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
-#     """Validate the user input allows us to connect.
-
-#     Data has the keys from DATA_SCHEMA with values provided by the user.
-#     """
-#     # Validate the data can be used to set up a connection.
-
-#     # This is a simple example to show an error in the UI for a short hostname
-#     # The exceptions are defined at the end of this file, and are used in the
-#     # `async_step_user` method below.
-#     if len(data["host"]) < 3:
-#         raise InvalidHost
-
-#     # hub = Hub(hass, data["host"])
-#     ## The dummy hub provides a `test_connection` method to ensure it's working
-#     ## as expected
-#     # result = await hub.test_connection()
-#     # if not result:
-#     #    # If there is an error, raise an exception to notify HA that there was a
-#     #    # problem. The UI will also show there was a problem
-#     #    raise CannotConnect
-
-#     # If your PyPI package is not built with async, pass your methods
-#     # to the executor:
-#     # await hass.async_add_executor_job(
-#     #     your_validate_func, data["username"], data["password"]
-#     # )
-
-#     # If you cannot connect:
-#     # throw CannotConnect
-#     # If the authentication is wrong:
-#     # InvalidAuth
-
-#     # Return info that you want to store in the config entry.
-#     # "Title" is what is displayed to the user for this hub device
-#     # It is stored internally in HA as part of the device config.
-#     # See `async_step_user` below for how this is used
-#     return {"title": data["host"]}
-
-
 # https://github.com/robinostlund/homeassistant-volkswagencarnet/blob/master/custom_components/volkswagencarnet/config_flow.py
 # globale coordinator? https://github.com/robinostlund/homeassistant-volkswagencarnet/blob/master/custom_components/volkswagencarnet/__init__.py
 
