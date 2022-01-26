@@ -159,10 +159,28 @@ class BrewfatherCoordinator(DataUpdateCoordinator[BrewfatherCoordinatorData]):
 
         if nextStep is not None:
             data.fermenting_next_temperature = nextStep.display_step_temp
+            fermentingStart: int | None = None
+            for note in currentBatch.notes:
+                if note.status == "Fermenting":
+                    fermentingStart = note.timestamp
+            _LOGGER.debug("fermentingStart: %s", fermentingStart)
+
             data.fermenting_next_date = datetime.fromtimestamp(
                 nextStep.actual_time / 1000, timezone.utc
             )
+
+            if fermentingStart is not None:
+                fermentingStartDate = datetime.fromtimestamp(
+                    fermentingStart / 1000, timezone.utc
+                )
+                data.fermenting_next_date = data.fermenting_next_date.replace(
+                    hour=fermentingStartDate.hour,
+                    minute=fermentingStartDate.minute,
+                    second=fermentingStartDate.second,
+                )
+
             _LOGGER.debug("Next step: %s", nextStep.display_step_temp)
+            _LOGGER.debug("data.fermenting_next_date: %s", data.fermenting_next_date)
         else:
             _LOGGER.debug("No next step")
 
@@ -171,7 +189,7 @@ class BrewfatherCoordinator(DataUpdateCoordinator[BrewfatherCoordinatorData]):
     async def update(self) -> List[BatchItem]:
         """Update status from Volkswagen WeConnect"""
         _LOGGER.debug("BrewfatherCoordinator.update!")
-        dry_run = False
+        dry_run = True
 
         activeBatches = await self.get_active_batches(dry_run)
 
