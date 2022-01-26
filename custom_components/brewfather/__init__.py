@@ -208,9 +208,9 @@ class BrewfatherCoordinator(DataUpdateCoordinator[BrewfatherCoordinatorData]):
                 ) as response:
 
                     if response.status == 200:
-                        allBatches = batches_item_from_dict(
-                            json.loads(await response.json())
-                        )
+                        jsonText = await response.text()
+                        _LOGGER.debug(jsonText)
+                        allBatches = batches_item_from_dict(json.loads(jsonText))
                     else:
                         raise UpdateFailed(
                             f"Error communicating with API: {response.status}"
@@ -237,7 +237,8 @@ class BrewfatherCoordinator(DataUpdateCoordinator[BrewfatherCoordinatorData]):
                 ) as response:
 
                     if response.status == 200:
-                        batch = batch_item_from_dict(json.loads(await response.json()))
+                        jsonText = await response.text()
+                        batch = batch_item_from_dict(json.loads(jsonText))
                     else:
                         raise UpdateFailed(
                             f"Error communicating with API: {response.status}"
