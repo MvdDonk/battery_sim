@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from sqlalchemy import true
 
 import voluptuous as vol
 
@@ -10,10 +11,12 @@ from homeassistant import config_entries, exceptions
 from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
 from .const import DOMAIN  # pylint:disable=unused-import
+from .connection import *
 
 # from .hub import Hub
 
 from homeassistant.const import (
+    CONF_NAME,
     CONF_PASSWORD,
     CONF_USERNAME,
 )
@@ -53,7 +56,21 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # This tells HA if it should be asking for updates, or it'll be notified of updates
     # automatically. This example uses PUSH, as the dummy hub will notify HA of
     # changes.
-    # CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
+    CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
+
+    async def validate_input(self, hass: HomeAssistant, data: dict) -> dict[str, any]:
+        """Validate the user input allows us to connect.
+        Data has the keys from DATA_SCHEMA with values provided by the user.
+        """
+        # Validate the data can be used to set up a connection.
+        name = data.get(CONF_NAME, False)
+
+        connection = Connection(
+            hass, data.get(CONF_USERNAME, False), data.get(CONF_PASSWORD, False)
+        )
+
+        result = await connection.test_connection()
+        return {"status": result, "name": name}
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -65,31 +82,60 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # `validate_input` above.
         errors = {}
         if user_input is not None:
-            try:
-                # info = await validate_input(self.hass, user_input)
 
-                return self.async_create_entry(title="", data=user_input)
+            # uniek stuff:
+            # await self.async_set_unique_id(device_unique_id)
+            # self._abort_if_unique_id_configured()
+
+            # https://developers.home-assistant.io/docs/config_entries_config_flow_handler/
+
+            try:
+                validationResult = await self.validate_input(self.hass, user_input)
+            except InvalidCredentials:
+                errors["base"] = "invalid_api_key"
+            except InvalidScope:
+                errors["base"] = "invalid_scope"
             except CannotConnect:
                 errors["base"] = "cannot_connect"
-            except InvalidHost:
-                # The error string is set here, and should be translated.
-                # This example does not currently cover translations, see the
-                # comments on `DATA_SCHEMA` for further details.
-                # Set the error on the `host` field, not the entire form.
-                errors["host"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
-        # If there is no user input or there were errors, show the form again, including any errors that were found with the input.
+            if validationResult["status"] == True:
+                name = validationResult["name"]
+                existing_entry = await self.async_set_unique_id(name)
+                self._abort_if_unique_id_configured()
+
+                return self.async_create_entry(title=name, data=user_input)
+
+        return await self._show_config_form(user_input, errors)
+
+    async def _show_config_form(self, user_input, errors):
+        """Show the configuration form to edit location data."""
+        if not user_input:
+            user_input = {}
         return self.async_show_form(
-            step_id="user", data_schema=DATA_SCHEMA, errors=errors
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_NAME, default=user_input.get(CONF_NAME, False)
+                    ): str,
+                    vol.Required(
+                        CONF_USERNAME, default=user_input.get(CONF_USERNAME, False)
+                    ): str,
+                    vol.Required(
+                        CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, False)
+                    ): str,
+                }
+            ),
+            errors=errors,
         )
 
 
-class CannotConnect(exceptions.HomeAssistantError):
-    """Error to indicate we cannot connect."""
+# class CannotConnect(exceptions.HomeAssistantError):
+#     """Error to indicate we cannot connect."""
 
 
-class InvalidHost(exceptions.HomeAssistantError):
-    """Error to indicate there is an invalid hostname."""
+# class InvalidHost(exceptions.HomeAssistantError):
+#     """Error to indicate there is an invalid hostname."""

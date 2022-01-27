@@ -4,24 +4,22 @@
     "step": {
       "user": {
         "title": "Api credentials",
-        "description": "Enter stuff2",
+        "description": "Enter stuff",
         "data": {
-          "username": "username",
-          "password": "apikey"
+          "name": "Connection name",
+          "username": "Api username",
+          "password": "Api key"
         }
       }
     },
     "error": {
-      "register_failed": "Failed to register, please try again",
-      "linking": "Unknown linking error occurred."
+      "cannot_connect": "Failed to register, please try again",
+      "invalid_scope": "The api key doesn't have the correct access (missing scope).",
+      "invalid_api_key": "Unable to authenticate with given credentials.",
+      "unknown":"Something went wrong."
     },
     "abort": {
-      "discover_timeout": "Unable to discover Hue bridges",
-      "no_bridges": "No Philips Hue bridges discovered",
-      "all_configured": "All Philips Hue bridges are already configured",
-      "unknown": "Unknown error occurred",
-      "cannot_connect": "Unable to connect to the bridge",
-      "already_configured": "Bridge is already configured"
+      "already_configured": "Api key is already configured"
     }
   }
 }
