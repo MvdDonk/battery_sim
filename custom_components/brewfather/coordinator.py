@@ -125,14 +125,18 @@ class BrewfatherCoordinator(DataUpdateCoordinator[BrewfatherCoordinatorData]):
                 fermentingStartDate = datetime.fromtimestamp(
                     fermentingStart / 1000, timezone.utc
                 )
-                data.fermenting_next_date = data.fermenting_next_date.replace(
-                    hour=fermentingStartDate.hour,
-                    minute=fermentingStartDate.minute,
-                    second=fermentingStartDate.second,
+                _LOGGER.debug(
+                    "fermenting_next_date before adding time: %s",
+                    data.fermenting_next_date,
+                )
+                data.fermenting_next_date += timedelta(
+                    hours=fermentingStartDate.hour,
+                    minutes=fermentingStartDate.minute,
+                    seconds=fermentingStartDate.second,
                 )
 
             _LOGGER.debug("Next step: %s", nextStep.display_step_temp)
-            _LOGGER.debug("data.fermenting_next_date: %s", data.fermenting_next_date)
+            _LOGGER.debug("fermenting_next_date: %s", data.fermenting_next_date)
         else:
             _LOGGER.debug("No next step")
 
