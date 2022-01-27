@@ -153,16 +153,26 @@ class BrewfatherSensor(CoordinatorEntity[SensorEntity]):
         """Return the state."""
         brewfatherCoordinator: BrewfatherCoordinator = self.coordinator
 
-        if self._kind == SensorKinds.fermenting_name:
-            self._state = brewfatherCoordinator.data.fermenting_name
-        elif self._kind == SensorKinds.fermenting_current_temperature:
-            self._state = brewfatherCoordinator.data.fermenting_current_temperature
-        elif self._kind == SensorKinds.fermenting_next_date:
-            self._state = brewfatherCoordinator.data.fermenting_next_date
-        elif self._kind == SensorKinds.fermenting_next_temperature:
-            self._state = brewfatherCoordinator.data.fermenting_next_temperature
+        if brewfatherCoordinator.data is None:
+            self._state = None
+        else:
+            if self._kind == SensorKinds.fermenting_name:
+                self._state = brewfatherCoordinator.data.fermenting_name
+            elif self._kind == SensorKinds.fermenting_current_temperature:
+                self._state = brewfatherCoordinator.data.fermenting_current_temperature
+            elif self._kind == SensorKinds.fermenting_next_date:
+                self._state = brewfatherCoordinator.data.fermenting_next_date
+            elif self._kind == SensorKinds.fermenting_next_temperature:
+                self._state = brewfatherCoordinator.data.fermenting_next_temperature
 
         return self._state
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        brewfatherCoordinator: BrewfatherCoordinator = self.coordinator
+        self._attr_available = brewfatherCoordinator.data is not None
+        return self._attr_available
 
     async def async_update(self):
         """Update Sensor Entity."""

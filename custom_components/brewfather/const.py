@@ -8,4 +8,4 @@ TEST_URI = "https://api.brewfather.app/v1/batches/"
 BATCHES_URI = "https://api.brewfather.app/v1/batches/"
 BATCH_URI = "https://api.brewfather.app/v1/batches/{}"
 
-DRY_RUN = True
+DRY_RUN = False

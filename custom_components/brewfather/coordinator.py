@@ -25,13 +25,14 @@ def sort_by_actual_time(entity: FermentationStep):
 
 
 class BrewfatherCoordinatorData:
-    fermenting_name: str
+    fermenting_name: Optional[str]
     fermenting_current_temperature: Optional[float]
     fermenting_next_date: Optional[datetime.datetime]
     fermenting_next_temperature: Optional[float]
 
     def __init__(self):
         # set defaults to None
+        self.fermenting_name = None
         self.fermenting_current_temperature = None
         self.fermenting_next_date = None
         self.fermenting_next_temperature = None
@@ -47,8 +48,6 @@ class BrewfatherCoordinator(DataUpdateCoordinator[BrewfatherCoordinatorData]):
         self.connection = Connection(
             hass, entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD]
         )
-        # self.username = entry.data[CONF_USERNAME]
-        # self.password = entry.data[CONF_PASSWORD]
 
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval)
 
@@ -74,7 +73,13 @@ class BrewfatherCoordinator(DataUpdateCoordinator[BrewfatherCoordinatorData]):
             fermentingBatches.append(await self.connection.get_batch(batch.id, DRY_RUN))
 
         # For now we only support a single fermenting batch
-        currentBatch = fermentingBatches[0]  # TODO nullcheck
+        if len(fermentingBatches) == 0:
+            return None
+        elif len(fermentingBatches) > 1:
+            _LOGGER.warning(
+                "Multiple fermenting batches found, at the moment only 1 is supported. Using the latest batch..."
+            )
+        currentBatch = fermentingBatches[0]
 
         currentTimeInMs = datetime.utcnow().timestamp() * 1000
         currentBatch.recipe.fermentation.steps.sort(key=sort_by_actual_time)
