@@ -9,6 +9,7 @@ from datetime import timedelta
 from .models.batch_item import BatchItem
 from homeassistant.config_entries import ConfigEntry
 from .const import *
+from .coordinator import BrewfatherCoordinator
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -147,8 +148,7 @@ class BrewfatherSensor(CoordinatorEntity):
     @property
     def state(self) -> StateType:
         """Return the state."""
-        # brewfatherCoordinator: BrewfatherCoordinator = self.coordinator
-        brewfatherCoordinator = self.coordinator
+        brewfatherCoordinator: BrewfatherCoordinator = self.coordinator
 
         if self._kind == SensorKinds.fermenting_name:
             self._state = brewfatherCoordinator.data.fermenting_name
